@@ -1,0 +1,43 @@
+package com.leandroasouza.restapidemo;
+
+/**
+ * Created by leandrosouza on 24/06/2016.
+ */
+public class Book {
+    private int bookId;
+    private String name;
+    private String price;
+    private int inStock;
+
+    public int getBookId() {
+        return bookId;
+    }
+
+    public void setBookId(int bookId) {
+        this.bookId = bookId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getPrice() {
+        return price;
+    }
+
+    public void setPrice(String price) {
+        this.price = price;
+    }
+
+    public int getInStock() {
+        return inStock;
+    }
+
+    public void setInStock(int inStock) {
+        this.inStock = inStock;
+    }
+}
