@@ -2,30 +2,33 @@ package com.leandroasouza.restapidemo;
 
 import android.app.ProgressDialog;
 import android.content.Intent;
-import android.os.AsyncTask;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
+import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity implements ListView.OnItemClickListener {
 
+    private static final String TAG = "MainActivity";
+
     //Root URL of our web service
-    public static final String ROOT_URL = "http://10.0.2.2:8080/";
+    //AVD
+    //public static final String ROOT_URL = "http://10.0.2.2:8080/";
+    //Genymotion
+    public static final String ROOT_URL = "http://10.0.3.2:8080/";
 
     //Strings to bind with intent will be used to send data to other activity
     public static final String KEY_BOOK_ID = "key_book_id";
@@ -36,6 +39,8 @@ public class MainActivity extends AppCompatActivity implements ListView.OnItemCl
     //List view to show data
     private ListView listView;
 
+    private Retrofit adapter;
+
     //List of type books this list will store type Book which is our data model
     private List<Book> books;
 
@@ -44,12 +49,42 @@ public class MainActivity extends AppCompatActivity implements ListView.OnItemCl
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        books = new ArrayList<>();
-
         listView = (ListView) findViewById(R.id.listViewBooks);
 
-        BackgroundTask task = new BackgroundTask();
-        task.execute();
+        ProgressDialog loading = ProgressDialog.show(MainActivity.this, "Fetching Data", "Please wait ...", false, false);
+
+        HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+        logging.setLevel(HttpLoggingInterceptor.Level.BASIC);
+        OkHttpClient client = new OkHttpClient.Builder()
+                .addInterceptor(logging)
+                .build();
+
+        adapter = new Retrofit.Builder()
+                .baseUrl(ROOT_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .client(client)
+                .build();
+
+
+        BookAPI api = adapter.create(BookAPI.class);
+
+        api.getBooks().clone().enqueue(new Callback<List<Book>>() {
+            @Override
+            public void onResponse(Call<List<Book>> call, Response<List<Book>> response) {
+                if (response.isSuccessful()) {
+                    Log.d(TAG, " RestApi onResponse  " + response.body().toString());
+                    books = response.body();
+                    showList();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<Book>> call, Throwable t) {
+
+            }
+        });
+
+        loading.dismiss();
 
         listView.setOnItemClickListener(this);
 
@@ -87,51 +122,5 @@ public class MainActivity extends AppCompatActivity implements ListView.OnItemCl
         startActivity(intent);
     }
 
-    private class BackgroundTask extends AsyncTask<Void, Void, List<Book>>
-    {
-        private Retrofit adapter;
-        Gson gson;
-        ProgressDialog loading;
 
-        @Override
-        protected void onPreExecute() {
-
-            loading = ProgressDialog.show(MainActivity.this, "Fetching Data", "Please wait ...", false, false);
-
-            gson = new GsonBuilder().create();
-
-            adapter = new Retrofit.Builder()
-                    .baseUrl(ROOT_URL)
-                    .addConverterFactory(GsonConverterFactory.create(gson))
-                    .build();
-        }
-
-        @Override
-        protected List<Book> doInBackground(Void... voids) {
-
-            BookAPI api = adapter.create(BookAPI.class);
-
-            Call<List<Book>> response = api.getBooks();
-
-            List<Book> bookArray = new ArrayList<>();
-
-            try {
-                bookArray = response.execute().body();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            return bookArray;
-        }
-
-        @Override
-        protected void onPostExecute(List<Book> booksIn) {
-
-            books = booksIn;
-            showList();
-            loading.dismiss();
-
-        }
-
-    }
 }
